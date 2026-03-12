@@ -61,6 +61,7 @@ export default function CounselingManagementPage() {
 
   async function fetchRequests() {
     setIsLoading(true)
+    // Fetch counseling requests without joining profiles to avoid ambiguous FK relationship
     const { data, error } = await supabase
       .from('counseling_requests')
       .select('*')
