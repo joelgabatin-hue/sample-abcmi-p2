@@ -28,18 +28,17 @@ interface Donation {
   id: string
   user_id: string | null
   donor_name: string
-  donor_email: string | null
+  email: string | null
   amount: number
   currency: string
-  donation_type: string
+  type: string
   payment_method: string | null
   transaction_id: string | null
   notes: string | null
   is_anonymous: boolean
   created_at: string
   profiles?: {
-    first_name: string
-    last_name: string
+    full_name: string
   }
 }
 
@@ -62,8 +61,7 @@ export default function DonationsManagementPage() {
       .select(`
         *,
         profiles (
-          first_name,
-          last_name
+          full_name
         )
       `)
       .order('created_at', { ascending: false })
@@ -79,9 +77,9 @@ export default function DonationsManagementPage() {
 
   const filteredDonations = donations.filter(donation => {
     const matchesSearch = 
-      donation.donor_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      donation.donor_email?.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesType = typeFilter === 'all' || donation.donation_type === typeFilter
+      donation.donor_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      donation.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesType = typeFilter === 'all' || donation.type === typeFilter
     return matchesSearch && matchesType
   })
 
@@ -107,7 +105,7 @@ export default function DonationsManagementPage() {
     }).format(amount)
   }
 
-  const donationTypes = [...new Set(donations.map(d => d.donation_type))]
+  const donationTypes = [...new Set(donations.map(d => d.type).filter(Boolean))]
 
   if (isLoading) {
     return (
@@ -251,11 +249,11 @@ export default function DonationsManagementPage() {
                         <TableCell>
                           <div>
                             <p className="font-medium">
-                              {donation.is_anonymous ? 'Anonymous' : donation.donor_name}
+                              {donation.is_anonymous ? 'Anonymous' : (donation.donor_name || donation.profiles?.full_name || 'Unknown')}
                             </p>
-                            {!donation.is_anonymous && donation.donor_email && (
+                            {!donation.is_anonymous && donation.email && (
                               <p className="text-sm text-muted-foreground">
-                                {donation.donor_email}
+                                {donation.email}
                               </p>
                             )}
                           </div>
@@ -267,7 +265,7 @@ export default function DonationsManagementPage() {
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className="capitalize">
-                            {donation.donation_type}
+                            {donation.type || 'general'}
                           </Badge>
                         </TableCell>
                         <TableCell className="capitalize">
