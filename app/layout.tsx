@@ -64,6 +64,9 @@ export default function RootLayout({
           {children}
         </AuthProvider>
         <Analytics />
+        {/* Botpress Chatbot */}
+        <script src="https://cdn.botpress.cloud/webchat/v3.6/inject.js" async></script>
+        <script src="https://files.bpcontent.cloud/2026/03/12/17/20260312170747-71ZPMW9N.js" defer></script>
       </body>
     </html>
   )
