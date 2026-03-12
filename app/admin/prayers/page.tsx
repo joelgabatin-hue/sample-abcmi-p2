@@ -32,15 +32,14 @@ interface PrayerRequest {
   user_id: string | null
   name: string
   email: string | null
-  request_text: string
+  request: string
   is_anonymous: boolean
   is_public: boolean
   status: string
   admin_notes: string | null
   created_at: string
   profiles?: {
-    first_name: string
-    last_name: string
+    full_name: string
     email: string
   }
 }
@@ -67,8 +66,7 @@ export default function PrayerRequestsPage() {
       .select(`
         *,
         profiles (
-          first_name,
-          last_name,
+          full_name,
           email
         )
       `)
@@ -125,8 +123,8 @@ export default function PrayerRequestsPage() {
 
   const filteredRequests = requests.filter(request => {
     const matchesSearch = 
-      request.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.request_text.toLowerCase().includes(searchTerm.toLowerCase())
+      request.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.request?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === 'all' || request.status === statusFilter
     return matchesSearch && matchesStatus
   })
@@ -286,7 +284,7 @@ export default function PrayerRequestsPage() {
                         )}
                       </div>
                       <p className="text-muted-foreground mb-3 line-clamp-2">
-                        {request.request_text}
+                        {request.request}
                       </p>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <span>
@@ -382,7 +380,7 @@ export default function PrayerRequestsPage() {
                 <div>
                   <Label className="text-muted-foreground">Prayer Request</Label>
                   <div className="mt-1 p-4 bg-muted rounded-lg">
-                    <p className="whitespace-pre-wrap">{selectedRequest.request_text}</p>
+                    <p className="whitespace-pre-wrap">{selectedRequest.request}</p>
                   </div>
                 </div>
                 <div className="grid gap-2">
