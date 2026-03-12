@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { 
   Calendar, 
@@ -8,13 +9,15 @@ import {
   MessageSquare, 
   Clock,
   TrendingUp,
-  Star
+  Star,
+  Loader2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/lib/auth-context'
 import { DashboardLayout } from '@/components/dashboard/dashboard-layout'
+import { createClient } from '@/lib/supabase/client'
 
 const quickActions = [
   { icon: Heart, label: 'Submit Prayer Request', href: '/prayer-request', color: 'bg-rose-500' },
@@ -23,20 +26,129 @@ const quickActions = [
   { icon: MessageSquare, label: 'Contact Pastor', href: '/counseling', color: 'bg-[var(--church-gold)]' },
 ]
 
-const upcomingEvents = [
-  { title: 'Sunday Worship Service', date: 'This Sunday', time: '10:00 AM', type: 'worship' },
-  { title: 'Midweek Bible Study', date: 'Wednesday', time: '7:00 PM', type: 'study' },
-  { title: 'Youth Fellowship', date: 'Friday', time: '6:00 PM', type: 'fellowship' },
-]
+interface Event {
+  id: string
+  title: string
+  date: string
+  time: string
+  type: string
+}
 
-const spiritualGrowth = [
-  { label: 'Bible Reading Streak', value: '7 days', icon: Star },
-  { label: 'Services Attended', value: '12 this month', icon: TrendingUp },
-  { label: 'Prayer Requests', value: '3 answered', icon: Heart },
-]
+interface PrayerRequest {
+  id: string
+  name: string
+  request: string
+  is_anonymous: boolean
+  created_at: string
+}
+
+interface DailyVerse {
+  verse_text: string
+  reference: string
+}
 
 export default function MemberDashboard() {
   const { user } = useAuth()
+  const [events, setEvents] = useState<Event[]>([])
+  const [prayerRequests, setPrayerRequests] = useState<PrayerRequest[]>([])
+  const [dailyVerse, setDailyVerse] = useState<DailyVerse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const supabase = createClient()
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        // Fetch upcoming events
+        const today = new Date().toISOString().split('T')[0]
+        const { data: eventsData } = await supabase
+          .from('events')
+          .select('id, title, date, time, type')
+          .gte('date', today)
+          .order('date', { ascending: true })
+          .limit(3)
+
+        if (eventsData) setEvents(eventsData)
+
+        // Fetch public prayer requests for the prayer wall
+        const { data: prayersData } = await supabase
+          .from('prayer_requests')
+          .select('id, name, request, is_anonymous, created_at')
+          .eq('is_public', true)
+          .order('created_at', { ascending: false })
+          .limit(2)
+
+        if (prayersData) setPrayerRequests(prayersData)
+
+        // Fetch today's verse
+        const { data: verseData } = await supabase
+          .from('daily_verses')
+          .select('verse_text, reference')
+          .eq('date', today)
+          .single()
+
+        if (verseData) {
+          setDailyVerse(verseData)
+        } else {
+          // Fallback verse
+          setDailyVerse({
+            verse_text: '"For I know the plans I have for you," declares the LORD, "plans to prosper you and not to harm you, plans to give you hope and a future."',
+            reference: 'Jeremiah 29:11 (NIV)'
+          })
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [supabase])
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr + 'T00:00:00')
+    const today = new Date()
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    
+    if (date.toDateString() === today.toDateString()) return 'Today'
+    if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow'
+    
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const diffDays = Math.ceil((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+    
+    if (diffDays <= 7) return `This ${dayNames[date.getDay()]}`
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }
+
+  const formatTimeAgo = (dateStr: string) => {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+    
+    if (diffMins < 60) return `${diffMins} minutes ago`
+    if (diffHours < 24) return `${diffHours} hours ago`
+    if (diffDays === 1) return 'Yesterday'
+    return `${diffDays} days ago`
+  }
+
+  // Fallback events for when database is empty
+  const fallbackEvents = [
+    { id: '1', title: 'Sunday Worship Service', date: 'This Sunday', time: '10:00 AM', type: 'worship' },
+    { id: '2', title: 'Midweek Bible Study', date: 'Wednesday', time: '7:00 PM', type: 'study' },
+    { id: '3', title: 'Youth Fellowship', date: 'Friday', time: '6:00 PM', type: 'fellowship' },
+  ]
+
+  const displayEvents = events.length > 0 ? events : fallbackEvents
+
+  const spiritualGrowth = [
+    { label: 'Bible Reading Streak', value: '7 days', icon: Star },
+    { label: 'Services Attended', value: '12 this month', icon: TrendingUp },
+    { label: 'Prayer Requests', value: '3 answered', icon: Heart },
+  ]
 
   return (
     <DashboardLayout variant="member">
@@ -55,10 +167,18 @@ export default function MemberDashboard() {
         <Card className="mb-8 bg-gradient-to-r from-[var(--church-primary)] to-[var(--church-primary-deep)] text-white border-0">
           <CardContent className="p-6">
             <p className="text-sm font-medium opacity-90 mb-2">Verse of the Day</p>
-            <blockquote className="text-lg md:text-xl font-serif italic leading-relaxed">
-              {'"For I know the plans I have for you," declares the LORD, "plans to prosper you and not to harm you, plans to give you hope and a future."'}
-            </blockquote>
-            <p className="mt-3 text-sm font-medium">- Jeremiah 29:11 (NIV)</p>
+            {loading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="w-6 h-6 animate-spin" />
+              </div>
+            ) : (
+              <>
+                <blockquote className="text-lg md:text-xl font-serif italic leading-relaxed">
+                  {dailyVerse?.verse_text}
+                </blockquote>
+                <p className="mt-3 text-sm font-medium">- {dailyVerse?.reference}</p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -111,39 +231,47 @@ export default function MemberDashboard() {
               </Button>
             </Link>
           </div>
-          <div className="grid md:grid-cols-3 gap-4">
-            {upcomingEvents.map((event) => (
-              <Card key={event.title}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <Badge 
-                      variant="secondary" 
-                      className={
-                        event.type === 'worship' ? 'bg-[var(--church-primary)]/10 text-[var(--church-primary)]' :
-                        event.type === 'study' ? 'bg-emerald-500/10 text-emerald-600' :
-                        'bg-[var(--church-gold)]/10 text-[var(--church-gold)]'
-                      }
-                    >
-                      {event.type}
-                    </Badge>
-                  </div>
-                  <CardTitle className="text-lg">{event.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
-                      {event.date}
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-[var(--church-primary)]" />
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-3 gap-4">
+              {displayEvents.map((event) => (
+                <Card key={event.id}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <Badge 
+                        variant="secondary" 
+                        className={
+                          event.type === 'worship' ? 'bg-[var(--church-primary)]/10 text-[var(--church-primary)]' :
+                          event.type === 'study' ? 'bg-emerald-500/10 text-emerald-600' :
+                          'bg-[var(--church-gold)]/10 text-[var(--church-gold)]'
+                        }
+                      >
+                        {event.type}
+                      </Badge>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      {event.time}
+                    <CardTitle className="text-lg">{event.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-4 h-4" />
+                        {typeof event.date === 'string' && event.date.includes('-') 
+                          ? formatDate(event.date) 
+                          : event.date}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        {event.time}
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Prayer Wall Preview */}
@@ -158,16 +286,35 @@ export default function MemberDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-sm text-foreground">Please pray for healing for my mother...</p>
-                <p className="text-xs text-muted-foreground mt-1">Anonymous - 2 hours ago</p>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-[var(--church-primary)]" />
               </div>
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-sm text-foreground">Thankful for answered prayer! Got the job...</p>
-                <p className="text-xs text-muted-foreground mt-1">Sarah M. - Yesterday</p>
+            ) : (
+              <div className="space-y-3">
+                {prayerRequests.length > 0 ? (
+                  prayerRequests.map((prayer) => (
+                    <div key={prayer.id} className="p-3 bg-muted rounded-lg">
+                      <p className="text-sm text-foreground line-clamp-2">{prayer.request}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {prayer.is_anonymous ? 'Anonymous' : prayer.name} - {formatTimeAgo(prayer.created_at)}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <>
+                    <div className="p-3 bg-muted rounded-lg">
+                      <p className="text-sm text-foreground">Please pray for healing for my mother...</p>
+                      <p className="text-xs text-muted-foreground mt-1">Anonymous - 2 hours ago</p>
+                    </div>
+                    <div className="p-3 bg-muted rounded-lg">
+                      <p className="text-sm text-foreground">Thankful for answered prayer! Got the job...</p>
+                      <p className="text-xs text-muted-foreground mt-1">Sarah M. - Yesterday</p>
+                    </div>
+                  </>
+                )}
               </div>
-            </div>
+            )}
             <Link href="/prayer-request">
               <Button className="w-full mt-4 bg-[var(--church-primary)] hover:bg-[var(--church-primary-deep)] text-white">
                 Submit Prayer Request

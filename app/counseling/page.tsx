@@ -10,18 +10,56 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { MessageCircle, Send, CheckCircle, Calendar, Clock, User, Phone, Video, Users } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
+import { useToast } from "@/hooks/use-toast"
 
 export default function CounselingPage() {
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [counselingType, setCounselingType] = useState("face-to-face")
+  const [preferredTime, setPreferredTime] = useState("")
+  const { toast } = useToast()
+  const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsLoading(true)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setIsLoading(false)
-    setIsSubmitted(true)
+    
+    const formData = new FormData(e.currentTarget)
+    const fullName = formData.get('fullName') as string
+    const contact = formData.get('contact') as string
+    const address = formData.get('address') as string
+    const facebook = formData.get('facebook') as string
+    const date = formData.get('date') as string
+    const concern = formData.get('concern') as string
+    const isMember = formData.get('membership') === 'yes'
+    
+    try {
+      const { error } = await supabase.from('counseling_requests').insert({
+        name: fullName,
+        phone: contact,
+        email: facebook ? `Facebook: ${facebook}` : null,
+        topic: `${counselingType.toUpperCase()} counseling`,
+        message: concern,
+        preferred_date: date,
+        preferred_time: preferredTime,
+        status: 'pending',
+        admin_notes: `Address: ${address || 'Not provided'}. Member: ${isMember ? 'Yes' : 'No'}.`
+      })
+
+      if (error) throw error
+      
+      setIsSubmitted(true)
+    } catch (error) {
+      console.error('Error submitting counseling request:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to submit counseling request. Please try again.',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   if (isSubmitted) {
@@ -87,7 +125,8 @@ export default function CounselingPage() {
                     <div className="space-y-2">
                       <Label htmlFor="fullName">Full Name *</Label>
                       <Input 
-                        id="fullName" 
+                        id="fullName"
+                        name="fullName"
                         placeholder="Your full name" 
                         required
                         className="border-border focus:border-[var(--church-primary)] focus:ring-[var(--church-primary)]"
@@ -96,7 +135,8 @@ export default function CounselingPage() {
                     <div className="space-y-2">
                       <Label htmlFor="contact">Contact Number *</Label>
                       <Input 
-                        id="contact" 
+                        id="contact"
+                        name="contact"
                         type="tel" 
                         placeholder="+63 912 345 6789" 
                         required
@@ -108,7 +148,8 @@ export default function CounselingPage() {
                   <div className="space-y-2">
                     <Label htmlFor="address">Address</Label>
                     <Input 
-                      id="address" 
+                      id="address"
+                      name="address"
                       placeholder="Your address" 
                       className="border-border focus:border-[var(--church-primary)] focus:ring-[var(--church-primary)]"
                     />
@@ -117,7 +158,8 @@ export default function CounselingPage() {
                   <div className="space-y-2">
                     <Label htmlFor="facebook">Facebook Account (Optional)</Label>
                     <Input 
-                      id="facebook" 
+                      id="facebook"
+                      name="facebook"
                       placeholder="facebook.com/yourprofile" 
                       className="border-border focus:border-[var(--church-primary)] focus:ring-[var(--church-primary)]"
                     />
@@ -127,7 +169,8 @@ export default function CounselingPage() {
                     <div className="space-y-2">
                       <Label htmlFor="date">Preferred Date *</Label>
                       <Input 
-                        id="date" 
+                        id="date"
+                        name="date"
                         type="date" 
                         required
                         className="border-border focus:border-[var(--church-primary)] focus:ring-[var(--church-primary)]"
@@ -135,17 +178,17 @@ export default function CounselingPage() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="time">Preferred Time *</Label>
-                      <Select>
+                      <Select value={preferredTime} onValueChange={setPreferredTime} required>
                         <SelectTrigger className="border-border focus:border-[var(--church-primary)] focus:ring-[var(--church-primary)]">
                           <SelectValue placeholder="Select time" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="9am">9:00 AM</SelectItem>
-                          <SelectItem value="10am">10:00 AM</SelectItem>
-                          <SelectItem value="11am">11:00 AM</SelectItem>
-                          <SelectItem value="2pm">2:00 PM</SelectItem>
-                          <SelectItem value="3pm">3:00 PM</SelectItem>
-                          <SelectItem value="4pm">4:00 PM</SelectItem>
+                          <SelectItem value="9:00 AM">9:00 AM</SelectItem>
+                          <SelectItem value="10:00 AM">10:00 AM</SelectItem>
+                          <SelectItem value="11:00 AM">11:00 AM</SelectItem>
+                          <SelectItem value="2:00 PM">2:00 PM</SelectItem>
+                          <SelectItem value="3:00 PM">3:00 PM</SelectItem>
+                          <SelectItem value="4:00 PM">4:00 PM</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -189,7 +232,7 @@ export default function CounselingPage() {
 
                   <div className="space-y-3">
                     <Label>Are you a church member? *</Label>
-                    <RadioGroup defaultValue="yes" className="flex gap-6">
+                    <RadioGroup defaultValue="yes" name="membership" className="flex gap-6">
                       <div className="flex items-center gap-2">
                         <RadioGroupItem value="yes" id="member-yes" />
                         <Label htmlFor="member-yes" className="cursor-pointer">Yes</Label>
@@ -204,7 +247,8 @@ export default function CounselingPage() {
                   <div className="space-y-2">
                     <Label htmlFor="concern">Topic or Concern to be Discussed *</Label>
                     <Textarea 
-                      id="concern" 
+                      id="concern"
+                      name="concern"
                       placeholder="Please briefly describe the topic or concern you would like to discuss..." 
                       rows={4}
                       required
