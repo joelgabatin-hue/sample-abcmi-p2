@@ -31,19 +31,15 @@ interface CounselingRequest {
   id: string
   user_id: string | null
   name: string
-  email: string
+  email: string | null
   phone: string | null
   preferred_date: string | null
   preferred_time: string | null
-  concern_type: string
-  message: string
+  topic: string | null
+  message: string | null
   status: string
   admin_notes: string | null
   created_at: string
-  profiles?: {
-    first_name: string
-    last_name: string
-  }
 }
 
 const concernTypes = ['spiritual', 'marriage', 'family', 'personal', 'grief', 'addiction', 'other']
@@ -67,13 +63,7 @@ export default function CounselingManagementPage() {
     setIsLoading(true)
     const { data, error } = await supabase
       .from('counseling_requests')
-      .select(`
-        *,
-        profiles (
-          first_name,
-          last_name
-        )
-      `)
+      .select('*')
       .order('created_at', { ascending: false })
     
     if (error) {
@@ -127,9 +117,9 @@ export default function CounselingManagementPage() {
 
   const filteredRequests = requests.filter(request => {
     const matchesSearch = 
-      request.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.concern_type.toLowerCase().includes(searchTerm.toLowerCase())
+      request.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.message?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.topic?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === 'all' || request.status === statusFilter
     return matchesSearch && matchesStatus
   })
@@ -285,9 +275,11 @@ export default function CounselingManagementPage() {
                       <div className="flex items-center gap-2 mb-2">
                         <span className="font-semibold">{request.name}</span>
                         {getStatusBadge(request.status)}
-                        <Badge variant="outline" className="capitalize">
-                          {request.concern_type}
-                        </Badge>
+                        {request.topic && (
+                          <Badge variant="outline" className="capitalize">
+                            {request.topic}
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-muted-foreground mb-3 line-clamp-2">
                         {request.message}
@@ -367,8 +359,8 @@ export default function CounselingManagementPage() {
                     <p className="font-medium">{selectedRequest.name}</p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground">Concern Type</Label>
-                    <p className="font-medium capitalize">{selectedRequest.concern_type}</p>
+                    <Label className="text-muted-foreground">Topic</Label>
+                    <p className="font-medium capitalize">{selectedRequest.topic || 'Not specified'}</p>
                   </div>
                 </div>
                 <div className="grid sm:grid-cols-2 gap-4">
