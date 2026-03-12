@@ -43,15 +43,15 @@ interface Event {
   id: string
   title: string
   description: string
-  event_date: string
-  event_time: string
+  date: string
+  time: string
   end_time: string | null
   location: string
-  event_type: string
+  type: string
   is_recurring: boolean
-  recurrence_pattern: string | null
+  recurring_pattern: string | null
   image_url: string | null
-  is_published: boolean
+  is_featured: boolean
   created_at: string
 }
 
@@ -67,15 +67,15 @@ export default function EventsManagementPage() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    event_date: '',
-    event_time: '',
+    date: '',
+    time: '',
     end_time: '',
     location: '',
-    event_type: 'worship',
+    type: 'worship',
     is_recurring: false,
-    recurrence_pattern: '',
+    recurring_pattern: '',
     image_url: '',
-    is_published: true,
+    is_featured: false,
   })
   const { toast } = useToast()
   const supabase = createClient()
@@ -89,7 +89,7 @@ export default function EventsManagementPage() {
     const { data, error } = await supabase
       .from('events')
       .select('*')
-      .order('event_date', { ascending: true })
+      .order('date', { ascending: true })
     
     if (error) {
       console.error('Error fetching events:', error)
@@ -105,15 +105,15 @@ export default function EventsManagementPage() {
     setFormData({
       title: '',
       description: '',
-      event_date: '',
-      event_time: '',
+      date: '',
+      time: '',
       end_time: '',
       location: '',
-      event_type: 'worship',
+      type: 'worship',
       is_recurring: false,
-      recurrence_pattern: '',
+      recurring_pattern: '',
       image_url: '',
-      is_published: true,
+      is_featured: false,
     })
     setIsDialogOpen(true)
   }
@@ -123,21 +123,21 @@ export default function EventsManagementPage() {
     setFormData({
       title: event.title,
       description: event.description || '',
-      event_date: event.event_date,
-      event_time: event.event_time,
+      date: event.date,
+      time: event.time,
       end_time: event.end_time || '',
       location: event.location,
-      event_type: event.event_type,
+      type: event.type,
       is_recurring: event.is_recurring,
-      recurrence_pattern: event.recurrence_pattern || '',
+      recurring_pattern: event.recurring_pattern || '',
       image_url: event.image_url || '',
-      is_published: event.is_published,
+      is_featured: event.is_featured,
     })
     setIsDialogOpen(true)
   }
 
   async function handleSubmit() {
-    if (!formData.title || !formData.event_date || !formData.event_time || !formData.location) {
+    if (!formData.title || !formData.date || !formData.time || !formData.location) {
       toast({ title: 'Error', description: 'Please fill in all required fields', variant: 'destructive' })
       return
     }
@@ -145,15 +145,15 @@ export default function EventsManagementPage() {
     const eventData = {
       title: formData.title,
       description: formData.description || null,
-      event_date: formData.event_date,
-      event_time: formData.event_time,
+      date: formData.date,
+      time: formData.time,
       end_time: formData.end_time || null,
       location: formData.location,
-      event_type: formData.event_type,
+      type: formData.type,
       is_recurring: formData.is_recurring,
-      recurrence_pattern: formData.is_recurring ? formData.recurrence_pattern : null,
+      recurring_pattern: formData.is_recurring ? formData.recurring_pattern : null,
       image_url: formData.image_url || null,
-      is_published: formData.is_published,
+      is_featured: formData.is_featured,
     }
 
     if (editingEvent) {
@@ -267,19 +267,19 @@ export default function EventsManagementPage() {
                 </div>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="event_date">Date *</Label>
+                    <Label htmlFor="date">Date *</Label>
                     <Input
-                      id="event_date"
+                      id="date"
                       type="date"
-                      value={formData.event_date}
-                      onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
+                      value={formData.date}
+                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="event_type">Event Type</Label>
+                    <Label htmlFor="type">Event Type</Label>
                     <Select
-                      value={formData.event_type}
-                      onValueChange={(value) => setFormData({ ...formData, event_type: value })}
+                      value={formData.type}
+                      onValueChange={(value) => setFormData({ ...formData, type: value })}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -296,12 +296,12 @@ export default function EventsManagementPage() {
                 </div>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="event_time">Start Time *</Label>
+                    <Label htmlFor="time">Start Time *</Label>
                     <Input
-                      id="event_time"
+                      id="time"
                       type="time"
-                      value={formData.event_time}
-                      onChange={(e) => setFormData({ ...formData, event_time: e.target.value })}
+                      value={formData.time}
+                      onChange={(e) => setFormData({ ...formData, time: e.target.value })}
                     />
                   </div>
                   <div className="grid gap-2">
@@ -343,19 +343,19 @@ export default function EventsManagementPage() {
                   </div>
                   <div className="flex items-center space-x-2">
                     <Switch
-                      id="is_published"
-                      checked={formData.is_published}
-                      onCheckedChange={(checked) => setFormData({ ...formData, is_published: checked })}
+                      id="is_featured"
+                      checked={formData.is_featured}
+                      onCheckedChange={(checked) => setFormData({ ...formData, is_featured: checked })}
                     />
-                    <Label htmlFor="is_published">Published</Label>
+                    <Label htmlFor="is_featured">Featured</Label>
                   </div>
                 </div>
                 {formData.is_recurring && (
                   <div className="grid gap-2">
-                    <Label htmlFor="recurrence_pattern">Recurrence Pattern</Label>
+                    <Label htmlFor="recurring_pattern">Recurrence Pattern</Label>
                     <Select
-                      value={formData.recurrence_pattern}
-                      onValueChange={(value) => setFormData({ ...formData, recurrence_pattern: value })}
+                      value={formData.recurring_pattern}
+                      onValueChange={(value) => setFormData({ ...formData, recurring_pattern: value })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select pattern" />
@@ -418,14 +418,16 @@ export default function EventsManagementPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
                         <h3 className="font-semibold text-lg truncate">{event.title}</h3>
-                        <Badge 
-                          variant={event.is_published ? 'default' : 'secondary'}
-                          className={event.is_published ? 'bg-emerald-500' : ''}
-                        >
-                          {event.is_published ? 'Published' : 'Draft'}
-                        </Badge>
+                        {event.is_featured && (
+                          <Badge 
+                            variant="default"
+                            className="bg-[var(--church-gold)]"
+                          >
+                            Featured
+                          </Badge>
+                        )}
                         <Badge variant="outline">
-                          {event.event_type}
+                          {event.type}
                         </Badge>
                         {event.is_recurring && (
                           <Badge variant="outline" className="border-[var(--church-gold)] text-[var(--church-gold)]">
@@ -441,7 +443,7 @@ export default function EventsManagementPage() {
                       <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center gap-1">
                           <Calendar className="w-4 h-4" />
-                          {new Date(event.event_date).toLocaleDateString('en-US', {
+                          {new Date(event.date).toLocaleDateString('en-US', {
                             weekday: 'long',
                             year: 'numeric',
                             month: 'long',
@@ -450,7 +452,7 @@ export default function EventsManagementPage() {
                         </div>
                         <div className="flex items-center gap-1">
                           <Clock className="w-4 h-4" />
-                          {event.event_time}
+                          {event.time}
                           {event.end_time && ` - ${event.end_time}`}
                         </div>
                         <div className="flex items-center gap-1">
