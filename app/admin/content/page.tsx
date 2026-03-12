@@ -53,7 +53,7 @@ export default function ContentManagementPage() {
     const { data, error } = await supabase
       .from('site_settings')
       .select('*')
-      .order('created_at', { ascending: true })
+      .order('updated_at', { ascending: true })
       .limit(1)
       .maybeSingle()
     
