@@ -9,18 +9,50 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Heart, Send, CheckCircle } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
+import { useToast } from "@/hooks/use-toast"
 
 export default function PrayerRequestPage() {
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const { toast } = useToast()
+  const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsLoading(true)
-    // Simulate submission
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setIsLoading(false)
-    setIsSubmitted(true)
+    
+    const formData = new FormData(e.currentTarget)
+    const name = formData.get('name') as string || 'Anonymous'
+    const contact = formData.get('contact') as string
+    const address = formData.get('address') as string
+    const request = formData.get('request') as string
+    const wantsFaceToFace = formData.get('face-to-face') === 'on'
+    
+    try {
+      const { error } = await supabase.from('prayer_requests').insert({
+        name: name || 'Anonymous',
+        email: contact, // Using contact as email field since we don't have a separate email input
+        request: request,
+        is_anonymous: !name || name === 'Anonymous',
+        is_public: false, // Default to private
+        status: wantsFaceToFace ? 'needs_followup' : 'pending',
+        admin_notes: address ? `Address: ${address}. ${wantsFaceToFace ? 'Wants face-to-face prayer.' : ''}` : (wantsFaceToFace ? 'Wants face-to-face prayer.' : null)
+      })
+
+      if (error) throw error
+      
+      setIsSubmitted(true)
+    } catch (error) {
+      console.error('Error submitting prayer request:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to submit prayer request. Please try again.',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   if (isSubmitted) {
@@ -85,7 +117,8 @@ export default function PrayerRequestPage() {
                   <div className="space-y-2">
                     <Label htmlFor="name">Name (Optional)</Label>
                     <Input 
-                      id="name" 
+                      id="name"
+                      name="name"
                       placeholder="Your name" 
                       className="border-border focus:border-[var(--church-primary)] focus:ring-[var(--church-primary)]"
                     />
@@ -95,7 +128,8 @@ export default function PrayerRequestPage() {
                   <div className="space-y-2">
                     <Label htmlFor="contact">Contact Number</Label>
                     <Input 
-                      id="contact" 
+                      id="contact"
+                      name="contact"
                       type="tel" 
                       placeholder="+63 912 345 6789" 
                       className="border-border focus:border-[var(--church-primary)] focus:ring-[var(--church-primary)]"
@@ -105,7 +139,8 @@ export default function PrayerRequestPage() {
                   <div className="space-y-2">
                     <Label htmlFor="address">Address</Label>
                     <Input 
-                      id="address" 
+                      id="address"
+                      name="address"
                       placeholder="Your address" 
                       className="border-border focus:border-[var(--church-primary)] focus:ring-[var(--church-primary)]"
                     />
@@ -114,7 +149,8 @@ export default function PrayerRequestPage() {
                   <div className="space-y-2">
                     <Label htmlFor="request">Prayer Request</Label>
                     <Textarea 
-                      id="request" 
+                      id="request"
+                      name="request"
                       placeholder="Share your prayer request here..." 
                       rows={5}
                       required
@@ -123,7 +159,7 @@ export default function PrayerRequestPage() {
                   </div>
 
                   <div className="flex items-start gap-3 p-4 bg-[var(--church-light-blue)] rounded-lg">
-                    <Checkbox id="face-to-face" className="mt-0.5" />
+                    <Checkbox id="face-to-face" name="face-to-face" className="mt-0.5" />
                     <div>
                       <Label htmlFor="face-to-face" className="text-sm font-medium cursor-pointer">
                         I would like to be prayed for face-to-face
