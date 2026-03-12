@@ -53,7 +53,9 @@ export default function ContentManagementPage() {
     const { data, error } = await supabase
       .from('site_settings')
       .select('*')
-      .single()
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
     
     if (error) {
       console.error('Error fetching settings:', error)
