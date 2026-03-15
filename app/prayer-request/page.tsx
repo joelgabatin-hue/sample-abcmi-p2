@@ -32,11 +32,10 @@ export default function PrayerRequestPage() {
     try {
       const { error } = await supabase.from('prayer_requests').insert({
         name: name || 'Anonymous',
-        email: contact, // Using contact as email field since we don't have a separate email input
+        email: contact,
         request: request,
         is_anonymous: !name || name === 'Anonymous',
-        is_public: false, // Default to private
-        status: 'pending',
+        is_public: false,
         admin_notes: address ? `Address: ${address}. ${wantsFaceToFace ? 'Requests face-to-face prayer.' : ''}` : (wantsFaceToFace ? 'Requests face-to-face prayer.' : null)
       })
 

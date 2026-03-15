@@ -85,6 +85,7 @@ export default function DonatePage() {
         donor_name: 'Anonymous Donor',
         amount: parseFloat(donationAmount),
         currency: 'USD',
+        type: 'general',
         is_anonymous: true,
       })
 
