@@ -36,15 +36,14 @@ export default function PrayerRequestPage() {
         request: request,
         is_anonymous: !name || name === 'Anonymous',
         is_public: false, // Default to private
-        status: wantsFaceToFace ? 'needs_followup' : 'pending',
-        admin_notes: address ? `Address: ${address}. ${wantsFaceToFace ? 'Wants face-to-face prayer.' : ''}` : (wantsFaceToFace ? 'Wants face-to-face prayer.' : null)
+        status: 'pending',
+        admin_notes: address ? `Address: ${address}. ${wantsFaceToFace ? 'Requests face-to-face prayer.' : ''}` : (wantsFaceToFace ? 'Requests face-to-face prayer.' : null)
       })
 
       if (error) throw error
       
       setIsSubmitted(true)
     } catch (error) {
-      console.error('Error submitting prayer request:', error)
       toast({
         title: 'Error',
         description: 'Failed to submit prayer request. Please try again.',

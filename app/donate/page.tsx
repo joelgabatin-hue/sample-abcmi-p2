@@ -85,7 +85,6 @@ export default function DonatePage() {
         donor_name: 'Anonymous Donor',
         amount: parseFloat(donationAmount),
         currency: 'USD',
-        type: donationType,
         is_anonymous: true,
       })
 
@@ -99,7 +98,6 @@ export default function DonatePage() {
       setDonationAmount('50')
       fetchDonations()
     } catch (error) {
-      console.error('Error processing donation:', error)
       toast({
         title: 'Error',
         description: 'Failed to process donation. Please try again.',
