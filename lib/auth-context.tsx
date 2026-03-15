@@ -33,8 +33,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Check for stored session on mount
-    const storedUser = localStorage.getItem('church_user')
+    // Check for stored session on mount (from localStorage or cookie)
+    let storedUser = localStorage.getItem('church_user')
+    
+    // If not in localStorage, try to parse from cookie
+    if (!storedUser && typeof document !== 'undefined') {
+      const cookieValue = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('church_user='))
+        ?.split('=')[1]
+      
+      if (cookieValue) {
+        try {
+          storedUser = decodeURIComponent(cookieValue)
+        } catch {
+          // Invalid cookie
+        }
+      }
+    }
+    
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser))
@@ -55,6 +72,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { password: _, ...userWithoutPassword } = foundUser
       setUser(userWithoutPassword)
       localStorage.setItem('church_user', JSON.stringify(userWithoutPassword))
+      
+      // Store in cookie for middleware access
+      if (typeof document !== 'undefined') {
+        document.cookie = `church_user=${JSON.stringify(userWithoutPassword)}; path=/; max-age=${7 * 24 * 60 * 60}` // 7 days
+      }
+      
       return { success: true }
     }
     
@@ -80,12 +103,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     setUser(newUser)
     localStorage.setItem('church_user', JSON.stringify(newUser))
+    
+    // Store in cookie for middleware access
+    if (typeof document !== 'undefined') {
+      document.cookie = `church_user=${JSON.stringify(newUser)}; path=/; max-age=${7 * 24 * 60 * 60}` // 7 days
+    }
+    
     return { success: true }
   }
 
   const logout = () => {
     setUser(null)
     localStorage.removeItem('church_user')
+    
+    // Remove cookie
+    if (typeof document !== 'undefined') {
+      document.cookie = 'church_user=; path=/; max-age=0'
+    }
   }
 
   return (
