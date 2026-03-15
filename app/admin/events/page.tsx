@@ -82,6 +82,25 @@ export default function EventsManagementPage() {
 
   useEffect(() => {
     fetchEvents()
+
+    // Subscribe to real-time updates with debouncing
+    let updateTimeout: NodeJS.Timeout
+    const debouncedFetch = () => {
+      clearTimeout(updateTimeout)
+      updateTimeout = setTimeout(() => {
+        fetchEvents()
+      }, 500)
+    }
+
+    const subscription = supabase
+      .channel('events_channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, debouncedFetch)
+      .subscribe()
+
+    return () => {
+      clearTimeout(updateTimeout)
+      subscription.unsubscribe()
+    }
   }, [])
 
   async function fetchEvents() {
@@ -92,7 +111,6 @@ export default function EventsManagementPage() {
       .order('date', { ascending: true })
     
     if (error) {
-      console.error('Error fetching events:', error)
       toast({ title: 'Error', description: 'Failed to load events', variant: 'destructive' })
     } else {
       setEvents(data || [])

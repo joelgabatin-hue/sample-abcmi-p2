@@ -87,6 +87,25 @@ export default function MembersManagementPage() {
 
   useEffect(() => {
     fetchProfiles()
+
+    // Subscribe to real-time updates with debouncing
+    let updateTimeout: NodeJS.Timeout
+    const debouncedFetch = () => {
+      clearTimeout(updateTimeout)
+      updateTimeout = setTimeout(() => {
+        fetchProfiles()
+      }, 500)
+    }
+
+    const subscription = supabase
+      .channel('profiles_channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, debouncedFetch)
+      .subscribe()
+
+    return () => {
+      clearTimeout(updateTimeout)
+      subscription.unsubscribe()
+    }
   }, [])
 
   async function fetchProfiles() {
@@ -97,7 +116,6 @@ export default function MembersManagementPage() {
       .order('created_at', { ascending: false })
     
     if (error) {
-      console.error('Error fetching profiles:', error)
       toast({ title: 'Error', description: 'Failed to load members', variant: 'destructive' })
     } else {
       setProfiles(data || [])

@@ -176,7 +176,7 @@ export default function AdminDashboard() {
         ])
 
       } catch (error) {
-        console.error('Error fetching dashboard data:', error)
+        // Silently handle errors
       } finally {
         setLoading(false)
       }

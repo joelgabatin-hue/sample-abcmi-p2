@@ -57,6 +57,25 @@ export default function PrayerRequestsPage() {
 
   useEffect(() => {
     fetchRequests()
+
+    // Subscribe to real-time updates with debouncing
+    let updateTimeout: NodeJS.Timeout
+    const debouncedFetch = () => {
+      clearTimeout(updateTimeout)
+      updateTimeout = setTimeout(() => {
+        fetchRequests()
+      }, 500)
+    }
+
+    const subscription = supabase
+      .channel('prayer_requests_channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'prayer_requests' }, debouncedFetch)
+      .subscribe()
+
+    return () => {
+      clearTimeout(updateTimeout)
+      subscription.unsubscribe()
+    }
   }, [])
 
   async function fetchRequests() {
@@ -73,7 +92,6 @@ export default function PrayerRequestsPage() {
       .order('created_at', { ascending: false })
     
     if (error) {
-      console.error('Error fetching prayer requests:', error)
       toast({ title: 'Error', description: 'Failed to load prayer requests', variant: 'destructive' })
     } else {
       setRequests(data || [])

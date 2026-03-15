@@ -52,6 +52,25 @@ export default function DonationsManagementPage() {
 
   useEffect(() => {
     fetchDonations()
+
+    // Subscribe to real-time updates with debouncing
+    let updateTimeout: NodeJS.Timeout
+    const debouncedFetch = () => {
+      clearTimeout(updateTimeout)
+      updateTimeout = setTimeout(() => {
+        fetchDonations()
+      }, 500)
+    }
+
+    const subscription = supabase
+      .channel('donations_channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'donations' }, debouncedFetch)
+      .subscribe()
+
+    return () => {
+      clearTimeout(updateTimeout)
+      subscription.unsubscribe()
+    }
   }, [])
 
   async function fetchDonations() {
@@ -67,7 +86,6 @@ export default function DonationsManagementPage() {
       .order('created_at', { ascending: false })
     
     if (error) {
-      console.error('Error fetching donations:', error)
       toast({ title: 'Error', description: 'Failed to load donations', variant: 'destructive' })
     } else {
       setDonations(data || [])

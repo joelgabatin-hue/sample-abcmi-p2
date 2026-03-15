@@ -57,6 +57,25 @@ export default function CounselingManagementPage() {
 
   useEffect(() => {
     fetchRequests()
+
+    // Subscribe to real-time updates with debouncing
+    let updateTimeout: NodeJS.Timeout
+    const debouncedFetch = () => {
+      clearTimeout(updateTimeout)
+      updateTimeout = setTimeout(() => {
+        fetchRequests()
+      }, 500)
+    }
+
+    const subscription = supabase
+      .channel('counseling_requests_channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'counseling_requests' }, debouncedFetch)
+      .subscribe()
+
+    return () => {
+      clearTimeout(updateTimeout)
+      subscription.unsubscribe()
+    }
   }, [])
 
   async function fetchRequests() {

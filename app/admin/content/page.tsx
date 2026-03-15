@@ -76,7 +76,6 @@ export default function ContentManagementPage() {
       .eq('id', settings.id)
     
     if (error) {
-      console.error('Error saving settings:', error)
       toast({ title: 'Error', description: 'Failed to save settings', variant: 'destructive' })
     } else {
       toast({ title: 'Success', description: 'Settings saved successfully' })
