@@ -106,49 +106,35 @@ export default function MemberDashboard() {
 
     fetchData()
 
-    // Subscribe to real-time updates for events
+    // Debounce timer for updates
+    let updateTimeout: NodeJS.Timeout
+
+    // Subscribe to real-time updates with debouncing to prevent excessive queries
+    const debouncedFetch = () => {
+      clearTimeout(updateTimeout)
+      updateTimeout = setTimeout(() => {
+        setIsUpdating(true)
+        fetchData()
+      }, 500)
+    }
+
     const eventsSubscription = supabase
       .channel('events_channel')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'events' },
-        (payload) => {
-          console.log('[v0] Events updated:', payload)
-          setIsUpdating(true)
-          fetchData()
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, debouncedFetch)
       .subscribe()
 
-    // Subscribe to real-time updates for prayer requests
     const prayersSubscription = supabase
       .channel('prayer_requests_channel')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'prayer_requests' },
-        (payload) => {
-          console.log('[v0] Prayer requests updated:', payload)
-          setIsUpdating(true)
-          fetchData()
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'prayer_requests' }, debouncedFetch)
       .subscribe()
 
-    // Subscribe to real-time updates for daily verses
     const versesSubscription = supabase
       .channel('daily_verses_channel')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'daily_verses' },
-        (payload) => {
-          console.log('[v0] Daily verses updated:', payload)
-          setIsUpdating(true)
-          fetchData()
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_verses' }, debouncedFetch)
       .subscribe()
 
     return () => {
+      clearTimeout(updateTimeout)
       eventsSubscription.unsubscribe()
       prayersSubscription.unsubscribe()
       versesSubscription.unsubscribe()

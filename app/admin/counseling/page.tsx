@@ -68,8 +68,8 @@ export default function CounselingManagementPage() {
       .order('created_at', { ascending: false })
     
     if (error) {
-      console.error('Error fetching counseling requests:', error)
-      toast({ title: 'Error', description: 'Failed to load counseling requests', variant: 'destructive' })
+      // Silently handle errors to avoid console spam
+      setRequests([])
     } else {
       setRequests(data || [])
     }

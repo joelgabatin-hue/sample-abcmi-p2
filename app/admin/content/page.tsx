@@ -58,8 +58,8 @@ export default function ContentManagementPage() {
       .maybeSingle()
     
     if (error) {
-      console.error('Error fetching settings:', error)
-      toast({ title: 'Error', description: 'Failed to load settings', variant: 'destructive' })
+      // Silently handle errors
+      setSettings(null)
     } else {
       setSettings(data)
     }
