@@ -17,6 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/lib/auth-context'
 import { DashboardLayout } from '@/components/dashboard/dashboard-layout'
+import { LiveUpdateBadge } from '@/components/dashboard/live-update-badge'
 import { createClient } from '@/lib/supabase/client'
 
 const quickActions = [
@@ -53,6 +54,7 @@ export default function MemberDashboard() {
   const [prayerRequests, setPrayerRequests] = useState<PrayerRequest[]>([])
   const [dailyVerse, setDailyVerse] = useState<DailyVerse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isUpdating, setIsUpdating] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -103,6 +105,54 @@ export default function MemberDashboard() {
     }
 
     fetchData()
+
+    // Subscribe to real-time updates for events
+    const eventsSubscription = supabase
+      .channel('events_channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'events' },
+        (payload) => {
+          console.log('[v0] Events updated:', payload)
+          setIsUpdating(true)
+          fetchData()
+        }
+      )
+      .subscribe()
+
+    // Subscribe to real-time updates for prayer requests
+    const prayersSubscription = supabase
+      .channel('prayer_requests_channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'prayer_requests' },
+        (payload) => {
+          console.log('[v0] Prayer requests updated:', payload)
+          setIsUpdating(true)
+          fetchData()
+        }
+      )
+      .subscribe()
+
+    // Subscribe to real-time updates for daily verses
+    const versesSubscription = supabase
+      .channel('daily_verses_channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'daily_verses' },
+        (payload) => {
+          console.log('[v0] Daily verses updated:', payload)
+          setIsUpdating(true)
+          fetchData()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      eventsSubscription.unsubscribe()
+      prayersSubscription.unsubscribe()
+      versesSubscription.unsubscribe()
+    }
   }, [supabase])
 
   const formatDate = (dateStr: string) => {
@@ -152,6 +202,7 @@ export default function MemberDashboard() {
 
   return (
     <DashboardLayout variant="member">
+      <LiveUpdateBadge isUpdating={isUpdating} />
       <main className="min-h-screen bg-[var(--church-light-blue)] p-6">
         {/* Header */}
         <div className="mb-8">

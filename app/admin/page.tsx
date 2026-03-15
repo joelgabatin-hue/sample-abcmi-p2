@@ -19,6 +19,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { DashboardLayout } from '@/components/dashboard/dashboard-layout'
+import { LiveUpdateBadge } from '@/components/dashboard/live-update-badge'
 import { createClient } from '@/lib/supabase/client'
 
 interface Stats {
@@ -58,6 +59,7 @@ export default function AdminDashboard() {
   })
   const [activities, setActivities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
+  const [isUpdating, setIsUpdating] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -181,6 +183,84 @@ export default function AdminDashboard() {
     }
 
     fetchDashboardData()
+
+    // Subscribe to real-time updates for prayer requests
+    const prayersSubscription = supabase
+      .channel('prayer_requests_channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'prayer_requests' },
+        (payload) => {
+          console.log('[v0] Prayer requests updated:', payload)
+          setIsUpdating(true)
+          fetchDashboardData()
+        }
+      )
+      .subscribe()
+
+    // Subscribe to real-time updates for counseling requests
+    const counselingSubscription = supabase
+      .channel('counseling_requests_channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'counseling_requests' },
+        (payload) => {
+          console.log('[v0] Counseling requests updated:', payload)
+          setIsUpdating(true)
+          fetchDashboardData()
+        }
+      )
+      .subscribe()
+
+    // Subscribe to real-time updates for donations
+    const donationsSubscription = supabase
+      .channel('donations_channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'donations' },
+        (payload) => {
+          console.log('[v0] Donations updated:', payload)
+          setIsUpdating(true)
+          fetchDashboardData()
+        }
+      )
+      .subscribe()
+
+    // Subscribe to real-time updates for events
+    const eventsSubscription = supabase
+      .channel('events_channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'events' },
+        (payload) => {
+          console.log('[v0] Events updated:', payload)
+          setIsUpdating(true)
+          fetchDashboardData()
+        }
+      )
+      .subscribe()
+
+    // Subscribe to real-time updates for profiles (members)
+    const profilesSubscription = supabase
+      .channel('profiles_channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles' },
+        (payload) => {
+          console.log('[v0] Profiles updated:', payload)
+          setIsUpdating(true)
+          fetchDashboardData()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      prayersSubscription.unsubscribe()
+      counselingSubscription.unsubscribe()
+      donationsSubscription.unsubscribe()
+      eventsSubscription.unsubscribe()
+      profilesSubscription.unsubscribe()
+    }
   }, [supabase])
 
   function formatTimeAgo(dateStr: string) {
@@ -230,6 +310,7 @@ export default function AdminDashboard() {
 
   return (
     <DashboardLayout variant="admin">
+      <LiveUpdateBadge isUpdating={isUpdating} />
       <main className="min-h-screen bg-[var(--church-light-blue)] p-6">
         {/* Header */}
         <div className="mb-8">

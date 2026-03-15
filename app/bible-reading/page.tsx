@@ -1,219 +1,270 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { SiteLayout } from "@/components/layout/site-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { BookOpen, Calendar, Quote, Bell, CheckCircle, ChevronLeft, ChevronRight } from "lucide-react"
+import { useEffect, useState } from 'react'
+import { SiteLayout } from '@/components/layout/site-layout'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { BookOpen, Calendar, MapPin, Clock, Share2, Heart } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { useToast } from '@/hooks/use-toast'
 
-const todaysReading = {
-  date: new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-  oldTestament: "Psalm 23",
-  newTestament: "John 10:1-18",
-  featuredVerse: {
-    text: "The Lord is my shepherd; I shall not want. He makes me lie down in green pastures. He leads me beside still waters. He restores my soul.",
-    reference: "Psalm 23:1-3"
-  },
-  reflection: {
-    title: "The Good Shepherd",
-    content: "In today's reading, we see the beautiful picture of God as our shepherd. Just as a shepherd knows each of his sheep by name, provides for their needs, and protects them from danger, so does our Heavenly Father care for us. The shepherd imagery reminds us that we are never alone—God leads us, guides us, and restores our weary souls. As you go through this day, remember that you are deeply known and tenderly cared for by the Good Shepherd who laid down His life for His sheep."
-  }
+interface DailyVerse {
+  id: string
+  date: string
+  verse_text: string
+  reference: string
+  interpretation: string | null
+  created_at: string
 }
 
-const weeklyPlan = [
-  { day: "Monday", reading: "Genesis 1-2, Matthew 1" },
-  { day: "Tuesday", reading: "Genesis 3-4, Matthew 2" },
-  { day: "Wednesday", reading: "Genesis 5-7, Matthew 3" },
-  { day: "Thursday", reading: "Genesis 8-10, Matthew 4" },
-  { day: "Friday", reading: "Genesis 11-12, Matthew 5:1-26" },
-  { day: "Saturday", reading: "Genesis 13-15, Matthew 5:27-48" },
-  { day: "Sunday", reading: "Genesis 16-17, Matthew 6:1-18" },
-]
-
 export default function BibleReadingPage() {
-  const [isSubscribed, setIsSubscribed] = useState(false)
-  const [email, setEmail] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+  const [verses, setVerses] = useState<DailyVerse[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const { toast } = useToast()
+  const supabase = createClient()
 
-  const handleSubscribe = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+  useEffect(() => {
+    fetchVerses()
+
+    // Subscribe to real-time updates
+    const subscription = supabase
+      .channel('daily_verses_channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'daily_verses' },
+        (payload) => {
+          console.log('[v0] Daily verses updated:', payload)
+          fetchVerses()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  async function fetchVerses() {
     setIsLoading(true)
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    const { data, error } = await supabase
+      .from('daily_verses')
+      .select('*')
+      .order('date', { ascending: false })
+      .limit(30)
+
+    if (error) {
+      console.error('Error fetching verses:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load daily verses',
+        variant: 'destructive'
+      })
+    } else {
+      setVerses(data || [])
+    }
     setIsLoading(false)
-    setIsSubscribed(true)
+  }
+
+  const handleShare = (verse: DailyVerse) => {
+    const text = `${verse.reference}\n\n"${verse.verse_text}"\n\nFrom our church's daily Bible reading`
+    if (navigator.share) {
+      navigator.share({
+        title: 'Daily Verse',
+        text: text
+      })
+    } else {
+      navigator.clipboard.writeText(text)
+      toast({
+        title: 'Copied',
+        description: 'Verse copied to clipboard'
+      })
+    }
   }
 
   return (
     <SiteLayout>
-      {/* Hero Section */}
-      <section className="pt-24 pb-12 lg:pt-32 lg:pb-16 bg-gradient-to-br from-[var(--church-primary)] to-[var(--church-primary-deep)]">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center text-white">
-            <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-6">
-              <BookOpen className="w-10 h-10" />
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-[var(--church-primary)] to-[var(--church-secondary)] text-white py-12 px-4">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-center gap-3 mb-2">
+              <BookOpen className="w-8 h-8" />
+              <h1 className="text-4xl font-bold">Daily Bible Reading</h1>
             </div>
-            <h1 className="text-4xl lg:text-5xl font-bold mb-4">Daily Bible Reading</h1>
-            <p className="text-xl text-white/90 max-w-2xl mx-auto">
-              {'"'}Your word is a lamp to my feet and a light to my path.{'"'} - Psalm 119:105
+            <p className="text-lg text-white/90">
+              Meditate on God's word daily for spiritual growth and transformation
             </p>
           </div>
         </div>
-      </section>
 
-      {/* Today's Reading */}
-      <section className="py-12 lg:py-16 bg-[var(--church-light-blue)]">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            {/* Date Header */}
-            <div className="flex items-center justify-between mb-6">
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                <ChevronLeft className="w-5 h-5" />
-              </Button>
-              <div className="flex items-center gap-2 text-foreground">
-                <Calendar className="w-5 h-5 text-[var(--church-primary)]" />
-                <span className="font-semibold">{todaysReading.date}</span>
-              </div>
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                <ChevronRight className="w-5 h-5" />
-              </Button>
-            </div>
+        {/* Main Content */}
+        <div className="max-w-6xl mx-auto px-4 py-12">
+          <Tabs defaultValue="verses" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-8">
+              <TabsTrigger value="verses">Daily Verses</TabsTrigger>
+              <TabsTrigger value="guides">Reading Guide</TabsTrigger>
+            </TabsList>
 
-            {/* Reading Cards */}
-            <div className="grid md:grid-cols-2 gap-4 mb-8">
-              <Card className="bg-background border-none shadow-lg">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <span className="w-8 h-8 rounded-full bg-[var(--church-gold)]/20 flex items-center justify-center text-sm font-bold text-[var(--church-gold)]">OT</span>
-                    Old Testament
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold text-[var(--church-primary)]">{todaysReading.oldTestament}</p>
-                  <Button variant="link" className="p-0 h-auto text-muted-foreground hover:text-[var(--church-primary)] mt-2">
-                    Read on Bible Gateway →
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-background border-none shadow-lg">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <span className="w-8 h-8 rounded-full bg-[var(--church-primary)]/10 flex items-center justify-center text-sm font-bold text-[var(--church-primary)]">NT</span>
-                    New Testament
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold text-[var(--church-primary)]">{todaysReading.newTestament}</p>
-                  <Button variant="link" className="p-0 h-auto text-muted-foreground hover:text-[var(--church-primary)] mt-2">
-                    Read on Bible Gateway →
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Featured Verse */}
-            <Card className="bg-gradient-to-r from-[var(--church-gold)]/10 to-[var(--church-gold)]/5 border-[var(--church-gold)]/30 mb-8">
-              <CardContent className="p-8">
-                <Quote className="w-10 h-10 text-[var(--church-gold)] mb-4" />
-                <p className="text-xl lg:text-2xl font-serif italic text-foreground leading-relaxed mb-4">
-                  {'"'}{todaysReading.featuredVerse.text}{'"'}
-                </p>
-                <p className="text-[var(--church-gold)] font-semibold">{todaysReading.featuredVerse.reference}</p>
-              </CardContent>
-            </Card>
-
-            {/* Reflection */}
-            <Card className="bg-background border-none shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-xl text-foreground flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-[var(--church-primary)]" />
-                  Today{`'`}s Reflection: {todaysReading.reflection.title}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground leading-relaxed">
-                  {todaysReading.reflection.content}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Weekly Plan */}
-      <section className="py-12 lg:py-16 bg-background">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl lg:text-3xl font-bold text-foreground">This Week{`'`}s Reading Plan</h2>
-              <p className="text-muted-foreground mt-2">Follow along with our church reading plan</p>
-            </div>
-
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {weeklyPlan.map((item, index) => (
-                <Card key={index} className={`border ${index === new Date().getDay() - 1 ? 'border-[var(--church-primary)] bg-[var(--church-light-blue)]' : 'border-border'}`}>
-                  <CardContent className="p-4">
-                    <p className="font-semibold text-foreground text-sm">{item.day}</p>
-                    <p className="text-muted-foreground text-sm mt-1">{item.reading}</p>
+            {/* Verses Tab */}
+            <TabsContent value="verses" className="space-y-6">
+              {isLoading ? (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">Loading daily verses...</p>
+                </div>
+              ) : verses.length === 0 ? (
+                <Card className="border-dashed">
+                  <CardContent className="py-12 text-center">
+                    <BookOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">No daily verses available yet</p>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
+              ) : (
+                <div className="grid gap-6">
+                  {verses.map((verse) => (
+                    <Card key={verse.id} className="hover:shadow-lg transition-shadow">
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <Badge variant="secondary" className="mb-2">
+                              {new Date(verse.date).toLocaleDateString('en-US', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
+                            </Badge>
+                            <CardTitle className="text-2xl">{verse.reference}</CardTitle>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleShare(verse)}
+                            className="hover:bg-muted"
+                          >
+                            <Share2 className="w-5 h-5" />
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <blockquote className="border-l-4 border-[var(--church-primary)] pl-4 italic text-lg">
+                          "{verse.verse_text}"
+                        </blockquote>
 
-      {/* Subscribe Section */}
-      <section className="py-12 lg:py-16 bg-[var(--church-soft-gray)]">
-        <div className="container mx-auto px-4">
-          <div className="max-w-xl mx-auto">
-            <Card className="bg-background border-none shadow-lg">
-              <CardContent className="p-8 text-center">
-                {isSubscribed ? (
-                  <>
-                    <CheckCircle className="w-12 h-12 text-emerald-600 mx-auto mb-4" />
-                    <h3 className="text-xl font-bold text-foreground mb-2">You{`'`}re Subscribed!</h3>
-                    <p className="text-muted-foreground">
-                      You{`'`}ll receive daily Bible reading reminders in your inbox. God bless your reading journey!
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <Bell className="w-12 h-12 text-[var(--church-primary)] mx-auto mb-4" />
-                    <h3 className="text-xl font-bold text-foreground mb-2">Get Daily Reminders</h3>
-                    <p className="text-muted-foreground mb-6">
-                      Subscribe to receive daily Bible reading and reflection in your inbox.
-                    </p>
-                    <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-3">
-                      <div className="flex-1">
-                        <Label htmlFor="email" className="sr-only">Email</Label>
-                        <Input 
-                          id="email"
-                          type="email" 
-                          placeholder="Your email address" 
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          required
-                          className="w-full"
-                        />
+                        {verse.interpretation && (
+                          <div className="bg-muted p-4 rounded-lg">
+                            <h4 className="font-semibold mb-2">Interpretation & Reflection</h4>
+                            <p className="text-muted-foreground">{verse.interpretation}</p>
+                          </div>
+                        )}
+
+                        <div className="flex gap-4 pt-4">
+                          <Button variant="outline" size="sm" className="gap-2">
+                            <Heart className="w-4 h-4" />
+                            Save Verse
+                          </Button>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            <BookOpen className="w-4 h-4" />
+                            Read Full Chapter
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Reading Guide Tab */}
+            <TabsContent value="guides" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>How to Use Daily Bible Reading</CardTitle>
+                  <CardDescription>
+                    Get the most out of your spiritual journey
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex gap-4">
+                      <div className="bg-[var(--church-primary)] text-white rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 font-semibold">
+                        1
                       </div>
-                      <Button 
-                        type="submit" 
-                        className="bg-[var(--church-primary)] hover:bg-[var(--church-primary-deep)] text-white"
-                        disabled={isLoading}
-                      >
-                        {isLoading ? "Subscribing..." : "Subscribe"}
-                      </Button>
-                    </form>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                      <div>
+                        <h4 className="font-semibold mb-1">Read the Verse</h4>
+                        <p className="text-muted-foreground">
+                          Start by reading the daily Bible verse carefully and thoughtfully
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                      <div className="bg-[var(--church-primary)] text-white rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 font-semibold">
+                        2
+                      </div>
+                      <div>
+                        <h4 className="font-semibold mb-1">Meditate</h4>
+                        <p className="text-muted-foreground">
+                          Take time to meditate and reflect on what the verse means to you
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                      <div className="bg-[var(--church-primary)] text-white rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 font-semibold">
+                        3
+                      </div>
+                      <div>
+                        <h4 className="font-semibold mb-1">Apply</h4>
+                        <p className="text-muted-foreground">
+                          Consider how you can apply this verse's message to your daily life
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                      <div className="bg-[var(--church-primary)] text-white rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 font-semibold">
+                        4
+                      </div>
+                      <div>
+                        <h4 className="font-semibold mb-1">Share</h4>
+                        <p className="text-muted-foreground">
+                          Share the verse with friends and family to spread God's word
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Tips for Effective Bible Reading</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex gap-3">
+                    <div className="w-2 h-2 rounded-full bg-[var(--church-primary)] mt-2 flex-shrink-0" />
+                    <p>Read in a quiet, distraction-free environment for better focus</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="w-2 h-2 rounded-full bg-[var(--church-primary)] mt-2 flex-shrink-0" />
+                    <p>Keep a journal to write down insights and reflections</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="w-2 h-2 rounded-full bg-[var(--church-primary)] mt-2 flex-shrink-0" />
+                    <p>Pray before and after reading to connect with God</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="w-2 h-2 rounded-full bg-[var(--church-primary)] mt-2 flex-shrink-0" />
+                    <p>Read the same verse multiple times to gain deeper understanding</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
-      </section>
+      </div>
     </SiteLayout>
   )
 }
